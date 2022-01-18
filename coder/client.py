@@ -4,6 +4,7 @@ import pprint
 import argparse
 import urllib.parse
 
+import rich
 import httpx
 
 from . import logs
@@ -13,10 +14,21 @@ DEFAULT_URL = 'http://localhost:1337'
 log = logs.get(__name__)
 
 def command(url, **params):
-    res = httpx.post(url, json=params)
-    data = res.json()
-    if data:
-        pprint.pprint(data)
+    if params:
+        request = httpx.post
+        kwargs = {'json': params}
+    else:
+        request = httpx.get
+        kwargs = {}
+
+    res = request(url, **kwargs)
+
+    if res.headers['content-type'] == 'application/json':
+        data = res.json()
+        if data:
+            rich.print_json(data=data, sort_keys=True)
+    else:
+        print(res.text)
 
 def events(url):
     while True:
@@ -45,14 +57,14 @@ def main():
         help='URL of the terracoder server (default: %(default)s)')
     parser.add_argument('-v', '--verbose', action='count', default=0,
         help='enable verbose output (-vv for more)')
-    parser.add_argument('command', help='the command to execute')
+    parser.add_argument('command', nargs='?', help='the command to execute')
     parser.add_argument('parameters', nargs='*',
         help='parameters to pass to the command')
 
     args = parser.parse_args()
     logs.init(args.verbose)
 
-    url = urllib.parse.urljoin(args.url, args.command)
+    url = urllib.parse.urljoin(args.url, args.command or '')
     params = {k.strip(): json.loads(v.strip())
         for k, v in (p.split('=') for p in args.parameters)}
 
