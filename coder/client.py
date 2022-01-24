@@ -51,6 +51,12 @@ def events(url):
             log.warning('lost connection: %s', e)
             time.sleep(1)
 
+def decode_value(v):
+    try:
+        return json.loads(v)
+    except json.JSONDecodeError:
+        return v
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--url', default=DEFAULT_URL,
@@ -65,16 +71,10 @@ def main():
     logs.init(args.verbose)
 
     url = urllib.parse.urljoin(args.url, args.command or '')
-    params = {k.strip(): json.loads(v.strip())
+    params = {k.strip(): decode_value(v.strip())
         for k, v in (p.split('=') for p in args.parameters)}
 
     if args.command == 'events':
         events(url)
     else:
         command(url, **params)
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass

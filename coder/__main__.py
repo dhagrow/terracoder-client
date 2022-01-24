@@ -1,2 +1,7 @@
 from . import client
-client.main()
+
+if __name__ == '__main__':
+    try:
+        client.main()
+    except KeyboardInterrupt:
+        pass
