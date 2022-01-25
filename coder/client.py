@@ -13,43 +13,51 @@ DEFAULT_URL = 'http://localhost:1337'
 
 log = logs.get(__name__)
 
-def command(url, **params):
-    if params:
-        request = httpx.post
-        kwargs = {'json': params}
-    else:
-        request = httpx.get
-        kwargs = {}
+class Client:
+    def __init__(self, url=None):
+        self._url = url or DEFAULT_URL
 
-    res = request(url, **kwargs)
+    def command(self, name=None, **params):
+        if params:
+            request = httpx.post
+            kwargs = {'json': params}
+        else:
+            request = httpx.get
+            kwargs = {}
 
-    if res.headers['content-type'] == 'application/json':
-        data = res.json()
-        if data:
-            rich.print_json(data=data, sort_keys=True)
-    else:
-        print(res.text)
+        url = urllib.parse.urljoin(self._url, name or '')
+        res = request(url, **kwargs)
 
-def events(url):
-    while True:
-        try:
-            log.info('connecting: %s ...', url)
-            with httpx.stream('GET', url, timeout=None) as res:
-                res.raise_for_status()
+        if res.headers['content-type'] == 'application/json':
+            return res.json()
+        else:
+            return res.text
 
-                event = {}
-                for line in res.iter_lines():
-                    if line.startswith('event:'):
-                        event = {'name': line[7:].strip()}
-                    elif line.startswith('data:'):
-                        event['data'] = line[6:].strip()
-                        log.info('event: %s', pprint.pformat(event))
-                    else:
-                        continue
+    def events(self):
+        url = urllib.parse.urljoin(self._url, 'events')
 
-        except (httpx.ConnectError, httpx.RemoteProtocolError) as e:
-            log.warning('lost connection: %s', e)
-            time.sleep(1)
+        # let caller start the generator
+        yield None
+
+        while True:
+            try:
+                log.info('connecting: %s ...', url)
+                with httpx.stream('GET', url, timeout=None) as res:
+                    res.raise_for_status()
+
+                    event = {}
+                    for line in res.iter_lines():
+                        if line.startswith('event:'):
+                            event = {'name': line[7:].strip()}
+                        elif line.startswith('data:'):
+                            event['data'] = line[6:].strip()
+                            yield event
+                        else:
+                            continue
+
+            except (httpx.ConnectError, httpx.RemoteProtocolError) as e:
+                log.warning('lost connection: %s', e)
+                time.sleep(1)
 
 def decode_value(v):
     try:
@@ -70,11 +78,14 @@ def main():
     args = parser.parse_args()
     logs.init(args.verbose)
 
-    url = urllib.parse.urljoin(args.url, args.command or '')
     params = {k.strip(): decode_value(v.strip())
         for k, v in (p.split('=') for p in args.parameters)}
 
+    client = Client(args.url)
     if args.command == 'events':
-        events(url)
+        for event in client.events():
+            log.info('event: %s', pprint.pformat(event))
     else:
-        command(url, **params)
+        res = client.command(args.command, **params)
+        if res:
+            rich.print_json(data=res, sort_keys=True)
