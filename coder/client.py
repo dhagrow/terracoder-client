@@ -92,14 +92,17 @@ def main():
     parser.add_argument('-v', '--verbose', action='count', default=0,
         help='enable verbose output (-vv for more)')
     parser.add_argument('command', nargs='?', help='the command to execute')
-    parser.add_argument('parameters', nargs='*',
+    parser.add_argument('parameters', nargs='*', metavar='<name>=<value>',
         help='parameters to pass to the command')
 
     args = parser.parse_args()
     logs.init(args.verbose)
 
-    params = {k.strip(): decode_value(v.strip())
-        for k, v in (p.split('=') for p in args.parameters)}
+    try:
+        params = {k.strip(): decode_value(v.strip())
+            for k, v in (p.split('=') for p in args.parameters)}
+    except ValueError:
+        parser.error('parameters must be in the format: <name>=<value>')
 
     client = Client(args.url)
     try:
