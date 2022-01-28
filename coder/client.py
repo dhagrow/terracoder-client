@@ -14,8 +14,8 @@ DEFAULT_URL = 'http://localhost:1337'
 log = logs.get(__name__)
 
 class Client:
-    def __init__(self, url=None):
-        self._url = url or DEFAULT_URL
+    def __init__(self, url=None, *parts):
+        self._url = os.path.join(url or DEFAULT_URL, *parts)
 
     def command(self, name=None, **params):
         if params:
@@ -102,10 +102,14 @@ def main():
         for k, v in (p.split('=') for p in args.parameters)}
 
     client = Client(args.url)
-    if args.command == 'events':
-        for event in client.events():
-            log.info('event: %s', pprint.pformat(event))
-    else:
-        res = client.command(args.command, **params)
-        if res:
-            rich.print_json(data=res, sort_keys=True)
+    try:
+        if args.command == 'events':
+            for event in client.events():
+                log.info('event: %s', pprint.pformat(event))
+        else:
+            res = client.command(args.command, **params)
+            if res:
+                rich.print_json(data=res, sort_keys=True)
+    except Exception as e:
+        logger = log.exception if args.verbose > 0 else log.error
+        logger('error: %s', e)
