@@ -1,8 +1,8 @@
+import os
 import json
 import time
 import pprint
 import argparse
-import urllib.parse
 
 import rich
 import httpx
@@ -25,7 +25,7 @@ class Client:
             request = httpx.get
             kwargs = {}
 
-        url = urllib.parse.urljoin(self._url, name or '')
+        url = os.path.join(self._url, name or '')
         res = request(url, **kwargs)
 
         if res.headers['content-type'] == 'application/json':
@@ -34,30 +34,50 @@ class Client:
             return res.text
 
     def events(self):
-        url = urllib.parse.urljoin(self._url, 'events')
+        def gen(url):
+            # let caller start the generator
+            yield None
 
-        # let caller start the generator
-        yield None
+            while True:
+                try:
+                    log.info('connecting: %s ...', url)
+                    with httpx.stream('GET', url, timeout=None) as res:
+                        res.raise_for_status()
 
-        while True:
-            try:
-                log.info('connecting: %s ...', url)
-                with httpx.stream('GET', url, timeout=None) as res:
-                    res.raise_for_status()
+                        event = {}
+                        for line in res.iter_lines():
+                            if line.startswith('event:'):
+                                event = {'name': line[7:].strip()}
+                            elif line.startswith('data:'):
+                                event['data'] = line[6:].strip()
+                                yield event
+                            else:
+                                continue
 
-                    event = {}
-                    for line in res.iter_lines():
-                        if line.startswith('event:'):
-                            event = {'name': line[7:].strip()}
-                        elif line.startswith('data:'):
-                            event['data'] = line[6:].strip()
-                            yield event
-                        else:
-                            continue
+                except (httpx.ConnectError, httpx.RemoteProtocolError) as e:
+                    log.warning('lost connection: %s', e)
+                finally:
+                    time.sleep(1)
 
-            except (httpx.ConnectError, httpx.RemoteProtocolError) as e:
-                log.warning('lost connection: %s', e)
-                time.sleep(1)
+        url = os.path.join(self._url, 'events')
+        return StreamInitiator(gen(url))
+
+    def wait_for_event(self, events, event_name):
+        for event in events:
+            if event['name'] == event_name:
+                return event
+
+class StreamInitiator(object):
+    """Captures the first value of a generator to ensure that it begins
+    execution."""
+    def __init__(self, gen):
+        # start the generator
+        next(gen)
+        self._gen = gen
+
+    def __iter__(self):
+        for x in self._gen:
+            yield x
 
 def decode_value(v):
     try:
