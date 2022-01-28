@@ -9,7 +9,7 @@ countless frozen generations, with no idea of their destination.
 
 You are their last hope.
 
-The game server is live here: https://terracoder.io
+The game server is live here: https://terracoder.dhagrow.org/
 
 I'm working on this with limited free time, so if anything seems broken, bear
 with me and I'll get to it when I can. In the mean-time, if you think it's a
