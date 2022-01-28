@@ -1,34 +1,33 @@
 import coder
 
 class Client(coder.Client):
+    @property
+    def drone(self):
+        """Returns a drone specific client."""
+        return Client(self._url, 'drone')
+
     def build_coal_mine(self):
+        # start monitoring events
         events = self.events()
-        # start generator
-        next(events)
 
-        bot_id = self.command('bot/ids')[0]
+        # pick the first drone
+        drone_id = self.drone.command('ids')[0]
 
-        # scan
-        for tile in self.command('bot/scan', bot_id=bot_id):
+        # use the drone to run a scan for coal
+        for tile in self.command('drone/scan', drone_id=drone_id):
             if 'coal' in tile['resources']:
                 break
         else:
             raise Exception('no resources found')
 
-        # travel
+        # travel to the coal
         dst = tile['position']
-        self.command('bot/travel', bot_id=bot_id, destination=dst)
-        self.wait_for_idle(events)
+        self.command('drone/travel', drone_id=drone_id, destination=dst)
+        self.wait_for_event(events, 'drone-task-idle')
 
-        # build
-        self.command('bot/build', bot_id=bot_id, structure='coal-mine')
-        self.wait_for_idle(events)
-
-    def wait_for_idle(self, events):
-        for event in events:
-            print('event:', event)
-            if event['name'] == 'bot-task-idle':
-                break
+        # build a mine to mine the coal
+        self.command('drone/build', drone_id=drone_id, type='coal-mine')
+        self.wait_for_event(events, 'drone-task-idle')
 
 def main():
     Client().build_coal_mine()
