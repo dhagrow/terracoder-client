@@ -10,6 +10,7 @@ import httpx
 from . import logs
 
 DEFAULT_URL = 'http://localhost:1337'
+RETRY_INTERVAL = 5
 
 log = logs.get(__name__)
 
@@ -57,7 +58,7 @@ class Client:
                 except (httpx.ConnectError, httpx.RemoteProtocolError) as e:
                     log.warning('lost connection: %s', e)
                 finally:
-                    time.sleep(1)
+                    time.sleep(RETRY_INTERVAL)
 
         url = os.path.join(self._url, 'events')
         return StreamInitiator(gen(url))
