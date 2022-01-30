@@ -1,6 +1,6 @@
-import coder
+import terracoder
 
-class Client(coder.Client):
+class Client(terracoder.Client):
     @property
     def drone(self):
         """Returns a drone specific client."""
