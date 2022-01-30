@@ -12,6 +12,7 @@ class Client(terracoder.Client):
 
         # pick the first drone
         drone_id = self.drone.command('ids')[0]
+        print('drone_id:', drone_id)
 
         # use the drone to run a scan for coal
         for tile in self.command('drone/scan', drone_id=drone_id):
@@ -22,7 +23,7 @@ class Client(terracoder.Client):
 
         # travel to the coal
         dst = tile['position']
-        self.command('drone/travel', drone_id=drone_id, destination=dst)
+        self.command('drone/travel', drone_id=drone_id, position=dst)
         self.wait_for_event(events, 'drone-task-idle')
 
         # build a mine to mine the coal
