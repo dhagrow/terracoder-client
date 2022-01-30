@@ -50,7 +50,8 @@ class Client:
                             if line.startswith('event:'):
                                 event = {'name': line[7:].strip()}
                             elif line.startswith('data:'):
-                                event['data'] = line[6:].strip()
+                                buf = line[6:].strip()
+                                event['data'] = json.loads(buf)
                                 yield event
                             else:
                                 continue
