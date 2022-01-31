@@ -4,7 +4,6 @@ import time
 import pprint
 import argparse
 
-import rich
 import httpx
 
 from . import output
@@ -29,13 +28,6 @@ class Client:
 
         url = os.path.join(self._url, name or '')
         res = request(url, **kwargs)
-
-        try:
-            func_name = name.replace('/', '_')
-            func = getattr(output, func_name)
-            return func(res)
-        except Exception:
-            pass
 
         if res.headers['content-type'] == 'application/json':
             return res.json()
@@ -122,7 +114,13 @@ def main():
         else:
             res = client.command(args.command, **params)
             if res:
-                print(res)
+                func_name = args.command.replace('/', '_')
+                try:
+                    func = getattr(output, func_name)
+                except AttributeError:
+                    pprint.pprint(res)
+                else:
+                    print(func(res))
     except Exception as e:
         logger = log.exception if args.verbose > 0 else log.error
         logger('error: %s', e)
