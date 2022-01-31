@@ -7,6 +7,7 @@ import argparse
 import rich
 import httpx
 
+from . import output
 from . import logs
 
 DEFAULT_URL = 'http://localhost:1337'
@@ -28,6 +29,13 @@ class Client:
 
         url = os.path.join(self._url, name or '')
         res = request(url, **kwargs)
+
+        try:
+            func_name = name.replace('/', '_')
+            func = getattr(output, func_name)
+            return func(res)
+        except Exception:
+            pass
 
         if res.headers['content-type'] == 'application/json':
             return res.json()
@@ -110,11 +118,11 @@ def main():
     try:
         if args.command == 'events':
             for event in client.events():
-                log.info('event: %s', pprint.pformat(event))
+                log.info('[event]\n%s', pprint.pformat(event))
         else:
             res = client.command(args.command, **params)
             if res:
-                rich.print_json(data=res, sort_keys=True)
+                print(res)
     except Exception as e:
         logger = log.exception if args.verbose > 0 else log.error
         logger('error: %s', e)
