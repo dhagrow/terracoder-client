@@ -1,3 +1,5 @@
+import collections
+
 def world_state(data):
     return format(data)
 
@@ -7,7 +9,15 @@ def drone_get(data):
 def drone_state(data):
     return '\n'.join(format(drone) for drone in data)
 
-def format(d, colsep=' │ '):
+BoxChars = collections.namedtuple('BoxChars', 'tl tr bl br lr tb')
+
+def format(d, colsep=None, boxchars=None):
+    colsep = ' │ ' if colsep is None else colsep
+    # boxchars = boxchars or BoxChars('┌', '┐', '└', '┘', '│', '─')
+    # boxchars = boxchars or BoxChars('╭', '╮', '╰', '╯', '│', '─')
+    # boxchars = boxchars or BoxChars('╭', '┐', '└', '╯', '│', '─')
+    boxchars = boxchars or BoxChars('┌', '╮', '╰', '┘', '│', '─')
+
     def format_dict(d, indent=0, indent_first=True):
         width = max(len(k) for k in d)
         for i, (k, v) in enumerate(d.items()):
@@ -29,7 +39,7 @@ def format(d, colsep=' │ '):
 
     def format_list(l, indent, indent_first=True):
         s = ', '.join(str(v) for v in l)
-        if len(s) < 20:
+        if len(s) < 40:
             yield s
             return
         for i, v in enumerate(l):
@@ -44,11 +54,11 @@ def format(d, colsep=' │ '):
 
     def wrap(lines, width):
         lines = list(lines)
-        dashes = '─' * (width + 2)
-        yield f'┌{dashes}┐'
+        dashes = boxchars.tb * (width + 2)
+        yield f'{boxchars.tl}{dashes}{boxchars.tr}'
         for i, line in enumerate(lines):
-            yield '│ ' + line
-        yield f'└{dashes}┘'
+            yield f'{boxchars.lr} {line}'
+        yield f'{boxchars.bl}{dashes}{boxchars.br}'
 
     width = max(len(k) for k in d)
     return '\n'.join(wrap(format_dict(d), width))
