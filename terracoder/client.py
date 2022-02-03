@@ -6,6 +6,7 @@ import argparse
 
 import httpx
 
+from .format import format
 from . import output
 from . import logs
 
@@ -114,13 +115,14 @@ def main():
         else:
             res = client.command(args.command, **params)
             if res:
-                func_name = args.command.replace('/', '_')
-                try:
-                    func = getattr(output, func_name)
-                except AttributeError:
-                    pprint.pprint(res)
-                else:
-                    print(func(res))
+                print(format(res))
+                # func_name = args.command.replace('/', '_')
+                # try:
+                #     func = getattr(output, func_name)
+                # except AttributeError:
+
+                # else:
+                #     print(func(res))
     except Exception as e:
         logger = log.exception if args.verbose > 0 else log.error
         logger('error: %s', e)
